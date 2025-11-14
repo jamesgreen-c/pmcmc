@@ -27,6 +27,13 @@ class LGSSMModel(FeynmacKac):
         Q = self.params['Q']
         mean = A @ x_prev + b
         return jr.multivariate_normal(key, mean, Q)
+    
+    def beta_pt(self, key, x_prev, t, beta):
+        A = self.params['A']
+        b = self.params['b']
+        Q = self.params['Q']
+        mean = A @ x_prev + b
+        return jr.multivariate_normal(key, mean, Q / jnp.maximum(beta, 0.1))
 
     def log_g(self, t, x_t, x_prev, y_t):
         # C = self.params['C'][0]  # single modality for now

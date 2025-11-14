@@ -4,7 +4,7 @@ from jax import Array
 import jax.numpy as jnp
 import jax.random as jr
 
-from utils.dataset_utils import generate_linear_data
+from utils.dataset_utils import generate_linear_data, generate_stock_price_data
 
 
 ROOT_DIR = "data/"
@@ -68,6 +68,8 @@ def load_dataset(name: str, seed: int, datadir: str = ROOT_DIR) -> Dataset:
     if name == 'linear_small':
         return generate_linear_data(1, 1, 1, 1, 300, 0.1, key)
     elif name == 'linear_medium':
-        return generate_linear_data(1, 4, 4, 1, 300, 0.1, key)
+        return generate_linear_data(1, 20, 20, 1, 300, 0.1, key)
     elif name == 'linear_large':
-        return generate_linear_data(1, 10, 10, 1, 300, 0.1, key)
+        return generate_linear_data(1, 30, 30, 1, 300, 0.1, key)
+    elif name == "stock_small":
+        return generate_stock_price_data(key, 3, 5, 100)

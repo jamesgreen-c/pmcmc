@@ -65,7 +65,7 @@ class ParticleGibbs(ABC):
             # print(f"Update states took: {time.perf_counter() - start:.2f} seconds")
             
             # start = time.perf_counter()
-            params = self.update_params(key2, params, obs, x_imm)
+            params = self.update_params(key2, params, outs, obs, x_imm)
             # print(f"Update params took: {time.perf_counter() - start:.2f} seconds")
 
             params_chain.append(params)
@@ -79,7 +79,7 @@ class ParticleGibbs(ABC):
         x_paths = jnp.stack(paths_chain)     # (n_iters, T, d)
         logZs   = jnp.stack(logZs)           # (n_iters,)
         ess_hist= jnp.stack(ess)             # (n_iters, T)
-        return PGSamples(thetas, x_paths, logZs, ess_hist)
+        return PGSamples(thetas, x_paths, logZs, ess_hist), outs
 
     def update_states(self, key: jr.PRNGKey, params: dict, obs: Array, x_imm: Array | None = None):
         
