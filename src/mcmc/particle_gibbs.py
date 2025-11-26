@@ -29,6 +29,7 @@ class PGSamples:
     ess_histories: Array         # (n_iters, T)
 
 
+
 class ParticleGibbs(ABC):
     """
     This is a generic protocol for Particle Gibbs type models

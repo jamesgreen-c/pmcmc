@@ -5,11 +5,7 @@ from jax.scipy.stats import multivariate_normal
 from dynamax.linear_gaussian_ssm import lgssm_filter
 from dynamax.linear_gaussian_ssm import LinearGaussianSSM as dmax_LGSSM
 
-import matplotlib.pyplot as plt
-
 from feynmac_kac.protocol import FeynmacKac, PFConfig
-from feynmac_kac.bootstrap import BootstrapParticleFilter
-from utils.datasets import load_dataset
 
 
 class LGSSMModel(FeynmacKac):
@@ -64,6 +60,11 @@ class LGSSMModel(FeynmacKac):
         return multivariate_normal.logpdf(x_0, mean=m1, cov=Q1)
 
 def main():
+
+    import matplotlib.pyplot as plt
+
+    from feynmac_kac.bootsrap_2 import BPF
+    from utils.datasets import load_dataset
     
     data = load_dataset('linear_small', seed=0)
 
@@ -86,7 +87,7 @@ def main():
     lgssm = LGSSMModel(data.params)
 
     # construct bootstrap particle filter
-    bpf = BootstrapParticleFilter(
+    bpf = BPF(
         model=lgssm,
         config=PFConfig(
             N=100,

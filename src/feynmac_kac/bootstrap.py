@@ -10,7 +10,7 @@ import jax.tree_util as jtu
 
 from resample.resamplers import RESAMPLERS
 from feynmac_kac.utils import log_normalize, ess
-from feynmac_kac.protocol import FeynmacKac, PFConfig, PFOutputs, CSMC
+from feynmac_kac.protocol import FeynmacKac, PFConfig, PFOutputs
 
 
 def _gather(x, idx):
@@ -112,7 +112,7 @@ class BootstrapParticleFilter:
         return x_n_prev, log_wn_prev, idx, ess_t
     
 
-class ConditionalBPF(BootstrapParticleFilter, CSMC):
+class ConditionalBPF(BootstrapParticleFilter):
     """
     Conditional Bootstrap Particle Filter
     Takes an immortal trajectory that must be included among the particles at each time step.

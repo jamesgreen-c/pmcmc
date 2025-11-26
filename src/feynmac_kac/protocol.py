@@ -112,14 +112,14 @@ class PFOutputs:
         particles, weights, ancestors, logZ_hat, ess_history = children
         return cls(particles, weights, ancestors, logZ_hat, ess_history)
 
-class CSMC(Protocol):
+# class CSMC(Protocol):
     
-    model: FeynmacKac
+#     model: FeynmacKac
 
-    def filter(self, T: int, obs: Array) -> PFOutputs:
-        """
-        """
+#     def filter(self, T: int, obs: Array) -> PFOutputs:
+#         """
+#         """
         
-    def csmc(self, obs: Array, x_imm: Array | None) -> PFOutputs:
-        """
-        """
+#     def csmc(self, obs: Array, x_imm: Array | None) -> PFOutputs:
+#         """
+#         """

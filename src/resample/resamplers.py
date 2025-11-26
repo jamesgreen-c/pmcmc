@@ -1,7 +1,9 @@
 import jax.numpy as jnp
 import jax.random as jr
-from jax import Array
+from jax import Array, lax
 import jax
+
+from feynmac_kac.utils import _gather, ess
 
 # TODO go over the resamplers in SMC book again and make sure they are correct
 
@@ -52,3 +54,26 @@ RESAMPLERS = {
     "stratified": stratified_resample,
     "residual": residual_resample,
 }
+
+class Resampler:
+
+    def __init__(self, resampler_fn):
+        self.resampler_fn = resampler_fn
+
+    def __call__(self, key, N, norm_wn_prev, ess_min, x_n_prev, log_wn_prev):
+        def do_resample(_):
+            idx = self.resampler_fn(key, norm_wn_prev)
+            x_res = _gather(x_n_prev, idx)
+            return x_res, jnp.zeros(N), idx
+        
+        def skip_resample(_):
+            return x_n_prev, log_wn_prev, jnp.arange(N)
+        
+        ess_t = ess(norm_wn_prev)
+        x_n_prev, log_wn_prev, idx = lax.cond(
+            ess_t < ess_min,
+            do_resample,
+            skip_resample,
+            operand=None
+        )
+        return x_n_prev, log_wn_prev, idx, ess_t
