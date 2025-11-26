@@ -63,7 +63,7 @@ def main():
 
     import matplotlib.pyplot as plt
 
-    from feynmac_kac.bootsrap_2 import BPF
+    from feynmac_kac.bootstrap import BPF
     from utils.datasets import load_dataset
     
     data = load_dataset('linear_small', seed=0)

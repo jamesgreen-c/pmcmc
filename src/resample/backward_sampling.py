@@ -6,7 +6,7 @@ from jax import Array, vmap, lax, jit
 import jax.tree_util as jtu
 
 from feynmac_kac.protocol import FeynmacKac, PFConfig, PFOutputs
-from feynmac_kac.bootsrap_2 import BaseParticleFilter
+from feynmac_kac.bootstrap import BaseParticleFilter
 
 from resample.resamplers import RESAMPLERS, Resampler, single_multinomial
 from feynmac_kac.utils import log_normalize, ess
