@@ -16,9 +16,7 @@ from resample.backward_sampling import BaseBackwardSampler
 @dataclass
 class PGConfig:
     n_iters: int
-    T: int
     key: jr.PRNGKey
-    backward_sample: bool = True
 
 @dataclass
 class PGSamples:
@@ -116,7 +114,7 @@ class ParticleGibbs(ABC):
         key, subkey = jr.split(key)
         ref_new = self.backward_sampler(
             subkey, 
-            self.pf, 
+            self.pf.model, 
             outs.particles, 
             outs.ancestors, 
             outs.weights
