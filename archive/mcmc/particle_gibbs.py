@@ -8,8 +8,8 @@ import jax.numpy as jnp
 import jax.random as jr
 from jax import Array, vmap, tree_map, lax, jit
 
-from feynmac_kac.protocol import CSMC, PFOutputs
-from feynmac_kac.utils import log_normalize
+from feynman_kac.protocol import CSMC, PFOutputs
+from feynman_kac.utils import log_normalize
 from resample.resamplers import single_multinomial
 
 import time

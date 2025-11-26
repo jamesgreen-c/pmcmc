@@ -5,11 +5,11 @@ import jax.random as jr
 from jax import Array, vmap, lax, jit
 import jax.tree_util as jtu
 
-from feynmac_kac.protocol import FeynmacKac, PFConfig, PFOutputs
-from feynmac_kac.bootstrap import BaseParticleFilter
+from feynman_kac.protocol import FeynmacKac, PFConfig, PFOutputs
+from feynman_kac.bootstrap import BaseParticleFilter
 
 from resample.resamplers import RESAMPLERS, Resampler, single_multinomial
-from feynmac_kac.utils import log_normalize, ess
+from feynman_kac.utils import log_normalize, ess
 
 
 class BaseBackwardSampler(ABC):

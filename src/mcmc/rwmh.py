@@ -11,7 +11,7 @@ import jax.numpy as jnp
 from jax import Array, vmap
 from jax.scipy.stats import norm
 
-from feynmac_kac.protocol import FeynmacKac
+from feynman_kac.protocol import FeynmacKac
 from mcmc.utils import invwishart_logpdf
 
 

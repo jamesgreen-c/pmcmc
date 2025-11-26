@@ -6,8 +6,8 @@ import jax
 import jax.tree_util as jtu
 
 from resample.resamplers import RESAMPLERS, Resampler
-from feynmac_kac.utils import log_normalize, ess
-from feynmac_kac.protocol import FeynmacKac, PFConfig, PFOutputs
+from feynman_kac.utils import log_normalize, ess
+from feynman_kac.protocol import FeynmacKac, PFConfig, PFOutputs
 from abc import ABC, abstractmethod
 
 

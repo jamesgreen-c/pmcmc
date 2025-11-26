@@ -5,7 +5,7 @@ from jax.scipy.stats import multivariate_normal
 from dynamax.linear_gaussian_ssm import lgssm_filter
 from dynamax.linear_gaussian_ssm import LinearGaussianSSM as dmax_LGSSM
 
-from feynmac_kac.protocol import FeynmacKac, PFConfig
+from feynman_kac.protocol import FeynmacKac, PFConfig
 
 
 class LGSSMModel(FeynmacKac):
@@ -63,7 +63,7 @@ def main():
 
     import matplotlib.pyplot as plt
 
-    from feynmac_kac.bootstrap import BPF
+    from feynman_kac.bootstrap import BPF
     from utils.datasets import load_dataset
     
     data = load_dataset('linear_small', seed=0)

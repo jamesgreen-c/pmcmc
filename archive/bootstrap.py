@@ -214,8 +214,8 @@ class ConditionalBPF(BootstrapParticleFilter):
 # from jax import Array, vmap, lax, jit 
 # import jax 
 # from resample.resamplers import RESAMPLERS
-# from feynman_kac.utils import log_normalize, ess 
-# from feynman_kac.protocol import FeynmacKac, PFConfig, PFOutputs, CSMC 
+# from feynmac_kac.utils import log_normalize, ess 
+# from feynmac_kac.protocol import FeynmacKac, PFConfig, PFOutputs, CSMC 
 # class BootstrapParticleFilter:
 #  """ The Bootstrap PF takes the potential function as the emission likelihood, and the Markov transition kernel as the proposal distribution. Unlike a guided PF, the Bootstrap PF cannot use lookahead information from the observations when proposing particles. """
 # def __init__(self, model: FeynmacKac, config: PFConfig):

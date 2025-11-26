@@ -9,7 +9,7 @@ import jax.numpy as jnp
 from jax import Array, vmap
 
 from utils.dataset_utils import inverse_gamma
-from feynmac_kac.protocol import FeynmacKac
+from feynman_kac.protocol import FeynmacKac
 
 
 class FullConditional(ABC):

@@ -7,8 +7,8 @@ import jax.numpy as jnp
 import jax.random as jr
 from jax import Array, tree_map, jit
 
-from feynmac_kac.protocol import PFOutputs
-from feynmac_kac.bootstrap import BaseParticleFilter
+from feynman_kac.protocol import PFOutputs
+from feynman_kac.bootstrap import BaseParticleFilter
 
 from resample.backward_sampling import BaseBackwardSampler
 

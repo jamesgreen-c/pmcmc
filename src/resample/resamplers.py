@@ -3,7 +3,7 @@ import jax.random as jr
 from jax import Array, lax
 import jax
 
-from feynmac_kac.utils import _gather, ess
+from feynman_kac.utils import _gather, ess
 
 # TODO go over the resamplers in SMC book again and make sure they are correct
 
