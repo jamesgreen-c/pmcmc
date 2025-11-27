@@ -11,18 +11,54 @@ from abc import ABC, abstractmethod
 
 class BaseParticleFilter(ABC):
     """
-    Abstract base class defining the generic structure of a particle filter.
+    Abstract base class for Particle Filters under the Feynman–Kac formalism.
 
-    Responsibilities:
-    - Store model, config, and RNG keys.
-    - Expose common utilities: vmapped transition, vmapped likelihood, ESS, normalization.
-    - Provide generic `t0()` and `resample()` methods, overridable by subclasses.
-    - Provide a standard `scan_step()` signature that subclasses may override
-      (e.g., ConditionalPF must inject an immortal path).
-    - Provide a final `run_filter()` method that performs lax.scan:
-        - calls t0()
-        - loops using scan_step()
-        - constructs PFOutputs
+    This class implements all proposal-agnostic SMC mechanics:
+        - State propagation via a model-provided proposal kernel.
+        - Weighting using a model-provided potential function.
+        - Normalisation and log-marginal likelihood accumulation.
+        - ESS-based resampling.
+        - Tracking of particle ancestry.
+        - Utilities for vectorised p(x_t | x_{t-1}) and log g_t(·).
+
+    -----------------------------------------------------------------------
+    Model-Driven Design
+    -----------------------------------------------------------------------
+    This class **does not define** whether the filter is bootstrap, guided,
+    optimal-proposal, or flow-based. Instead, the behaviour is determined
+    entirely by the `model: FeynmacKac` object, which must implement:
+
+        - p0(key, N) → sample initial states.
+        - pt(key, x_prev, t) → proposal kernel q(x_t | x_{t-1}, y_t).
+        - log_pt(t, x_t, x_prev) → log density of the proposal.
+        - log_g(t, x_t, x_prev, y_t) → emission (potential) log-likelihood.
+
+    Therefore:
+        * If pt/log_pt correspond to the transition density,
+          this becomes a Bootstrap PF.
+        * If pt/log_pt implement a guided proposal,
+          this becomes a Guided PF.
+        * If pt/log_pt come from a learned/flow-based proposal,
+          this becomes a Flow-Guided PF.
+        * All variants share the same algorithm implementation.
+
+    This separation ensures that the particle filtering machinery is universal,
+    while the probabilistic structure resides exclusively in the model.
+
+    -----------------------------------------------------------------------
+    Extensible Subclasses
+    -----------------------------------------------------------------------
+    Derived filters override only the recursion pattern:
+        - PF:        standard (resample → propagate → weight).
+        - ConditionalPF:  fixes a reference trajectory for CSMC.
+        - BaseTemperedPF: adds a temperature-adaptive inner loop.
+        - TemperedPF:      tempered version of standard PF.
+
+    Each subclass inherits the full suite of utilities for vectorised
+    propagation, weighting, and normalisation.
+
+    Users should not subclass BaseParticleFilter unless implementing a new
+    SMC variant. Most modelling is done by altering the FeynmacKac model.
     """
 
     def __init__(self, model: FeynmacKac, cfg: PFConfig):
@@ -42,6 +78,8 @@ class BaseParticleFilter(ABC):
         # expose common utilities
         self.vmap_pt = vmap(lambda k, x, t: self.model.pt(k, x, t), in_axes=(0, 0, None))
         self.vmap_log_g = vmap(self.model.log_g, in_axes=(None, 0, 0, None))
+        self.vmap_log_pt = vmap(self.model.log_pt, in_axes=(None, 0, 0))
+        self.vmap_log_p0 = vmap(self.model.log_p0)
 
     def filter(
         self,

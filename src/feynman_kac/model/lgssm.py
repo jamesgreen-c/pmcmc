@@ -8,7 +8,7 @@ from dynamax.linear_gaussian_ssm import LinearGaussianSSM as dmax_LGSSM
 from feynman_kac.protocol import FeynmacKac, PFConfig
 
 
-class LGSSMModel(FeynmacKac):
+class LGSSM_BPF(FeynmacKac):
     def __init__(self, params):
         super().__init__(params)
 
@@ -84,7 +84,7 @@ def main():
     print("Exact filter means shape: ", lgssm_posterior.filtered_means.shape)
 
     # parametrise model with the true parameters for now
-    lgssm = LGSSMModel(data.params)
+    lgssm = LGSSM_BPF(data.params)
 
     # construct bootstrap particle filter
     bpf = BPF(
