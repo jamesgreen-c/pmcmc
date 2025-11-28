@@ -12,6 +12,9 @@ def single_multinomial(key: jr.PRNGKey, w: Array) -> Array:
     N = w.shape[0]
     return jr.choice(key, N, shape=(1,), replace=True, p=w)
 
+def n_multinomial(key: jr.PRNGKey, w: Array, N: int) -> Array:
+    return jr.choice(key, N, shape=(N,), replace=True, p=w)
+
 def multinomial_resample(key: jr.PRNGKey, w: Array) -> Array:
     N = w.shape[0]
     return jr.choice(key, N, shape=(N,), replace=True, p=w)

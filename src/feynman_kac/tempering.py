@@ -211,4 +211,163 @@ class TemperedPF(BaseTemperedPF):
             ess_t,
         )
     
+
+class TemperedCSMC(BaseTemperedPF):
+    """
+    A Tempered Conditional Sequential Monte Carlo (TCSMC) / Conditional TPF.
+
+    Responsibilities:
+    - Keep an 'reference' trajectory fixed through time.
+    - Override:
+        - t0(): inject ref[0] into the particle set.
+        - step(): ensure particle 0 always follows the fixed path.
+                  ensure ancestor index 0→0 after resampling.
+    - All other logic identical to BaseTemperedPF.
+    """
+
+    def t0(self, key: jr.PRNGKey, N, obs0: Array, ref: Array | tuple[Array]):
+
+        assert ref is not None, "ConditionalBPF requires a reference trajectory."
+
+        x_n0 = self.model.p0(key, N)  # (N,d)
+        x_n0 = jtu.tree_map(lambda x, ref: x.at[0].set(ref[0]), x_n0, ref)  # set reference particle
+        
+        log_wn0 = self.vmap_log_g(0, x_n0, None, obs0)  # (N,)
+        norm_w_n0, logZ_0 = log_normalize(log_wn0)
     
+        return x_n0, log_wn0, norm_w_n0, logZ_0
+    
+    def step(self, carry, obs_t):
+            
+        key, x_n_prev, log_wn_prev, norm_wn_prev, logZ_prev, ref = carry
+        key1, key2, key3 = jr.split(key, 3)
+        t, y_t = obs_t
+
+        x_n_prev, log_wn_prev, idx, ess_t = self.resampler(key2, self.N, norm_wn_prev, self.ess_min, x_n_prev, log_wn_prev)
+
+        # restore reference particle and correct ancestor index
+        ref_prev = jtu.tree_map(lambda r: r[t-1], ref)     # extract PyTree slice
+        ref_now = jtu.tree_map(lambda r: r[t], ref)     # extract PyTree slice
+        x_n_prev = jtu.tree_map(lambda x, rv: x.at[0].set(rv), x_n_prev, ref_prev)
+        idx = idx.at[0].set(0)
+
+        # sample transition
+        keys_t = jr.split(key1, self.N)
+        x_nt = self.vmap_pt(keys_t, x_n_prev, t)  # (N,d)
+        x_nt = jtu.tree_map(lambda x, rv: x.at[0].set(rv), x_nt, ref_now)
+
+        # tempering (does resampling and weight calculation)
+        key_temper, x_nt, log_wnt, idx = self.temper(
+            key3,           # RNG
+            x_nt,           # current particles
+            x_n_prev,       # previous particles
+            t,              # time index
+            y_t,            # observation
+            self.ess_min,        # ESS threshold
+            self.N,              # number of particles
+            ref_now                 # reference particle
+        )
+
+        w_nt_norm, logZ_t = log_normalize(log_wnt)
+        logZ = logZ_prev + logZ_t
+        
+        # track ESS
+        ess_t = ess(w_nt_norm)
+        
+        return (key_temper, x_nt, log_wnt, w_nt_norm, logZ, ref), (
+            x_nt,
+            w_nt_norm,
+            idx,
+            ess_t,
+        )
+    
+    # override temper to ensure reference particle is not moved
+    def temper(self, key, x_nt, x_n_prev, t, y_t, ess_min, N, ref_t):
+        """
+        
+        1. Sample x_nt_b as x_nt_b | x_nb_prev ~ N(A @ x_nb_prev, Q / b). If b=0 use x_n_prev.
+        2. Calculate tempered log potentials (beta @ log_g_curr) using x_nt_b and y_t. 
+        3. If ESS < ESS_min: resample.
+        4. Repeat until b = 1
+
+        TODOs:
+         - correct the doc string above
+         - correct the lineage tracking through MCMC mutations and resampling.
+        """
+
+        beta = 0.0
+        x_nt_b = x_nt
+
+        # start with weights 1/N
+        norm_wb = jnp.ones(N) / N
+        log_wb = jnp.log(norm_wb) 
+        log_g_curr = self.vmap_log_g(t, x_nt_b, x_n_prev, y_t)
+        log_pt_curr = self.vmap_log_pt(t, x_nt_b, x_n_prev)
+        
+        def cond(carry):
+            beta, *_ = carry
+            return beta < 1.0 - 1e-9
+
+        def step(carry):
+            
+            beta, key, x_nt_b, log_wb_prev, log_g_curr, log_pt_curr, _ = carry
+
+            # 1. Find delta temperature
+            delta, _, log_wb = self.find_temper_delta(log_wb_prev, log_g_curr, beta, ess_min)
+            delta = jnp.minimum(delta, 1.0 - beta)
+            beta = beta + delta
+
+            # jax.debug.print("[temperature] beta={}", beta)
+
+            # 2. Compute new weights
+            # log_g_curr = self.vmapped_log_g(t, x_nt_b, x_n_prev, y_t)
+            # log_pt_curr = self.vmapped_log_pt(t, x_nt_b, x_n_prev)
+            # log_wb = (delta * log_g_curr)   # + log_wb_prev  omitting this gives better results
+            norm_wb, _ = log_normalize(log_wb)
+
+            # 3. Potentially resample
+            key, subkey = jr.split(key)
+            x_nb_res, log_wb, idx, ess_tb = self.resampler(
+                subkey, N, norm_wb, ess_min, x_nt_b, log_wb
+            )
+            idx = idx.at[0].set(0)  # keep reference particle fixed
+
+            log_g_curr = log_g_curr[idx]
+            log_pt_curr = log_pt_curr[idx]
+
+            # 4. Gaussian local proposal
+            key, key_norm, key_unif = jr.split(key, 3)
+            noise = 0.1 * jr.normal(key_norm, shape=x_nb_res.shape)
+            x_nt_b_prop = x_nb_res + noise
+
+            # ensure reference particle is not moved
+            x_nt_b_prop = jtu.tree_map(lambda x, rv: x.at[0].set(rv), x_nt_b_prop, ref_t)
+
+            # 5. Calculate acceptances for proposals
+            log_g_prop = self.vmap_log_g(t, x_nt_b_prop, x_n_prev, y_t)
+            log_pt_prop = self.vmap_log_pt(t, x_nt_b_prop, x_n_prev)
+
+            unif_n = jr.uniform(key_unif, shape=(x_nt_b.shape[0], ))
+            logA = beta * (log_g_prop - log_g_curr) + (log_pt_prop - log_pt_curr)
+            alpha = jnp.minimum(1.0, jnp.exp(logA))
+            accept = unif_n <= alpha
+            accept = accept.at[0].set(True)  # keep reference particle fixed
+
+            # update x and log potentials to reflect acceptances
+            x_nb_next  = jnp.where(accept[:, None], x_nt_b_prop, x_nb_res)
+            log_g_next  = jnp.where(accept, log_g_prop, log_g_curr)
+            log_pt_next  = jnp.where(accept, log_pt_prop, log_pt_curr)
+                
+            # # reset weights
+            # norm_wb = jnp.ones(N) / N
+            # log_wb = jnp.log(norm_wb)
+            
+            return (beta, key, x_nb_next, log_wb, log_g_next, log_pt_next, idx)
+
+        # run the temper scan
+        beta, key, x_nt, log_wb, _, _, idx = lax.while_loop(
+            cond,
+            step,
+            (beta, key, x_nt_b, log_wb, log_g_curr, log_pt_curr, jnp.arange(N))
+        )
+        return key, x_nt, log_wb, idx
