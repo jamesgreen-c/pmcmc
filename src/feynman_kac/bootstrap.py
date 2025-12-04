@@ -1,8 +1,9 @@
 
-from jax import Array, lax, vmap
+from jax import Array, lax, vmap, value_and_grad
 import jax.random as jr
 import jax.tree_util as jtu
 import jax.numpy as jnp
+from jax.scipy.stats import multivariate_normal
 
 from feynman_kac.utils import log_normalize, ess
 from feynman_kac.protocol import FeynmacKac, PFConfig
@@ -181,3 +182,5 @@ class iRWCSMC(BaseParticleFilter):
         logZ = logZ_prev + logZ_t
 
         return (key2, x_nt, log_wnt, w_nt_norm, logZ, ref), (x_nt, w_nt_norm, idx, ess_t)
+    
+

@@ -89,6 +89,66 @@ class BackwardSampler(BaseBackwardSampler):
         return particles[jnp.arange(T), B]
 
 
+class ParticleMALABackwardSampler(BaseBackwardSampler):
+    """
+    Implements the standard backward-resampling algorithm used in
+    Particle Gibbs and conditional SMC.
+
+    Uses model.log_pt to compute backward transition probabilities and
+    performs multinomial resampling at each time step.
+    """
+
+    @classmethod
+    def sample(
+        cls, 
+        key: jr.PRNGKey, 
+        model: FeynmacKac, 
+        particles: Array, 
+        ancestors: Array, 
+        weights: Array
+    ):
+        """
+        Perform standard backward sampling on the given particles and weights.
+
+        key: PRNGKey
+        model: FeynmacKac model according to protocol
+        particles: (T, N, d) array of particles from PF
+        ancestors: (T - 1, N) array of ancestor indices from PF
+        weights: (T, N) array of normalized weights from PF
+        """
+
+        log_Q = vmap(
+            lambda t, x, xp, y: jnp.sum(model.log_g(t, x, xp, y) + model.log_pt(t, x, xp)),  # sum gets to scalar
+            in_axes=(None, 0, 0, None)
+        )
+
+        T = particles.shape[0]
+        B = jnp.zeros((T,), dtype=jnp.int32)
+        B = B.at[T - 1].set(jnp.squeeze(single_multinomial(key, weights[-1])))
+
+        log_pt = vmap(lambda t, x_t, x_prev: model.log_pt(t, x_t, x_prev), in_axes=(None, None, 0))
+        
+        def step(carry, t):
+            key, B = carry
+            key, subkey = jr.split(key)
+            idx = T - 1 - t  # reverse index
+            
+            # sample ancestors
+            x_next = particles[idx + 1, B[idx + 1]]
+            x_nt = particles[idx]
+
+            log_Qt = log_Q(idx + 1, x_next[None, ...], x_nt, None)  # (N,)
+            
+            log_W_tilde = jnp.log(weights[idx] + 1e-30) + log_pt(idx + 1, x_next, x_nt)
+            W_tilde, _ = log_normalize(log_W_tilde)
+            B = B.at[idx].set(jnp.squeeze(single_multinomial(subkey, W_tilde)))
+            return (key, B), None
+
+        carry = (key, B)
+        (key, B), _ = lax.scan(step, carry, jnp.arange(1, T))
+        return particles[jnp.arange(T), B]
+
+
 class LineageTracking(BaseBackwardSampler):
     """
     Implements deterministic extraction of a single trajectory
