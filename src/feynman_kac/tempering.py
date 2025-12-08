@@ -13,8 +13,9 @@ class BaseTemperedPF(BaseParticleFilter):
     Contains shared methods for all tempered particle filters
     """
 
-    def __init__(self, model: FeynmacKac, cfg: PFConfig):
+    def __init__(self, model: FeynmacKac, cfg: PFConfig, kappa: float = 0.05):
         super().__init__(model, cfg)
+        self.kappa = kappa
 
     def find_temper_delta(self, log_w_norm, log_g_t, beta, ess_target):
         left, right = 1e-3, 1.0 - beta
@@ -115,7 +116,7 @@ class BaseTemperedPF(BaseParticleFilter):
 
             # 4. Gaussian local proposal
             key, key_norm, key_unif = jr.split(key, 3)
-            noise = 0.1 * jr.normal(key_norm, shape=x_nb_res.shape)
+            noise = self.kappa * jr.normal(key_norm, shape=x_nb_res.shape)
             x_nt_b_prop = x_nb_res + noise
 
             # 5. Calculate acceptances for proposals
@@ -165,8 +166,9 @@ class TemperedPF(BaseTemperedPF):
     β=1 distribution coincides with the true filtering distribution at time t.
     """
 
-    def __init__(self, model: FeynmacKac, cfg: PFConfig):
-        super().__init__(model, cfg)
+    def __init__(self, model: FeynmacKac, cfg: PFConfig, kappa: float = 0.05):
+        super().__init__(model, cfg, kappa)
+        
 
     def t0(self, key: jr.PRNGKey, N, obs0: Array, ref: Array | tuple[Array] | None = None):
 

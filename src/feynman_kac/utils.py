@@ -21,4 +21,3 @@ def ess(w: jnp.ndarray) -> float:
 def _gather(x, idx):
     return jtu.tree_map(lambda a: a[idx], x)
 
-    
